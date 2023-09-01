@@ -1,0 +1,72 @@
+{
+  "name": "@meshsdk/core",
+  "description": "Rapidly build Web3 apps on the Cardano Blockchain.",
+  "homepage": "https://meshjs.dev",
+  "author": "MeshJS",
+  "version": "1.5.5",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeshJS/mesh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MeshJS/mesh/issues"
+  },
+  "keywords": [
+    "blockchain",
+    "cardano",
+    "plutus"
+  ],
+  "main": "dist/core.cjs",
+  "module": "dist/core.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "lint": "eslint --ext .ts .",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "vite build",
+    "prepare": "yarn lint && yarn test && yarn build",
+    "dev": "vite build --watch"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "yarn lint"
+    }
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "11.1.3",
+    "@typescript-eslint/eslint-plugin": "6.5.0",
+    "@typescript-eslint/parser": "6.5.0",
+    "husky": "8.0.3",
+    "rollup": "3.28.1",
+    "tslib": "2.6.2",
+    "vite": "4.4.9",
+    "vite-plugin-eslint": "1.8.1",
+    "vite-plugin-wasm": "3.2.2",
+    "vitest": "0.34.3"
+  },
+  "dependencies": {
+    "@emurgo/cardano-message-signing-asmjs": "1.0.1",
+    "@emurgo/cardano-serialization-lib-asmjs": "11.5.0",
+    "@emurgo/cip14-js": "3.0.1",
+    "axios": "1.5.0",
+    "bip39": "3.1.0",
+    "nanoid": "4.0.2",
+    "zod": "3.22.2"
+  }
+}
