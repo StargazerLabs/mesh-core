@@ -1,7 +1,7 @@
 Forked from https://github.com/MeshJS/mesh
 -> extracted from packages/module/
 
-import with ` "@meshsdk/core": "github:stargazerlabs/mesh-core",`
+import with `"@meshsdk/core": "github:stargazerlabs/mesh-core"`
 
 ![Mesh Logo](https://meshjs.dev/logo-mesh/mesh.png)
 
