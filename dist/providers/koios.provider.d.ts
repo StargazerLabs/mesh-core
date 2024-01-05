@@ -3,7 +3,7 @@ import type { AccountInfo, Asset, AssetMetadata, BlockInfo, Protocol, Transactio
 export declare class KoiosProvider implements IFetcher, IListener, ISubmitter {
     private readonly _axiosInstance;
     constructor(baseUrl: string);
-    constructor(network: 'api' | 'preview' | 'preprod' | 'guild', version?: number);
+    constructor(network: 'api' | 'preview' | 'preprod' | 'guild', token: string, version?: number);
     fetchAccountInfo(address: string): Promise<AccountInfo>;
     fetchAddressUTxOs(address: string, asset?: string): Promise<UTxO[]>;
     fetchAssetAddresses(asset: string): Promise<{
@@ -19,6 +19,9 @@ export declare class KoiosProvider implements IFetcher, IListener, ISubmitter {
     fetchHandleAddress(handle: string): Promise<string>;
     fetchProtocolParameters(epoch: number): Promise<Protocol>;
     fetchTxInfo(hash: string): Promise<TransactionInfo>;
+    fetchUTxOs(hash: string): Promise<UTxO[]>;
     onTxConfirmed(txHash: string, callback: () => void, limit?: number): void;
     submitTx(tx: string): Promise<string>;
+    private toUTxO;
+    private resolveScriptRef;
 }

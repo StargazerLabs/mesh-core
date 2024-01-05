@@ -2,30 +2,53 @@ import axios, { AxiosInstance } from 'axios';
 import { SUPPORTED_HANDLES } from '@mesh/common/constants';
 import { IFetcher, IListener, ISubmitter } from '@mesh/common/contracts';
 import {
-  deserializeNativeScript, fromNativeScript, fromUTF8,
-  parseAssetUnit, parseHttpError, resolveRewardAddress,
-  toBytes, toScriptRef, toUTF8,
+  deserializeNativeScript,
+  fromNativeScript,
+  fromUTF8,
+  parseAssetUnit,
+  parseHttpError,
+  resolveRewardAddress,
+  toBytes,
+  toScriptRef,
+  toUTF8,
 } from '@mesh/common/utils';
 import type {
-  AccountInfo, Asset, AssetMetadata, BlockInfo,
-  PlutusScript, Protocol, TransactionInfo, UTxO,
+  AccountInfo,
+  Asset,
+  AssetMetadata,
+  BlockInfo,
+  PlutusScript,
+  Protocol,
+  TransactionInfo,
+  UTxO,
 } from '@mesh/common/types';
 
 export class KoiosProvider implements IFetcher, IListener, ISubmitter {
   private readonly _axiosInstance: AxiosInstance;
 
   constructor(baseUrl: string);
-  constructor(network: 'api' | 'preview' | 'preprod' | 'guild', version?: number);
+  constructor(
+    network: 'api' | 'preview' | 'preprod' | 'guild',
+    token: string,
+    version?: number
+  );
 
   constructor(...args: unknown[]) {
     if (typeof args[0] === 'string' && args[0].startsWith('http')) {
-      this._axiosInstance = axios.create({ baseURL: args[0] });
+      this._axiosInstance = axios.create({
+        baseURL: args[0],
+        headers: {
+          Authorization: `Bearer ${args[1]}`,
+        },
+      });
     } else {
       this._axiosInstance = axios.create({
-        baseURL: `https://${args[0]}.koios.rest/api/v${args[1] ?? 0}`,
+        baseURL: `https://${args[0]}.koios.rest/api/v${args[2] ?? 0}`,
+        headers: {
+          Authorization: `Bearer ${args[1]}`,
+        },
       });
     }
-    
   }
 
   async fetchAccountInfo(address: string): Promise<AccountInfo> {
@@ -34,9 +57,9 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
         ? resolveRewardAddress(address)
         : address;
 
-      const { data, status } = await this._axiosInstance.post(
-        'account_info', { _stake_addresses: [rewardAddress] },
-      );
+      const { data, status } = await this._axiosInstance.post('account_info', {
+        _stake_addresses: [rewardAddress],
+      });
 
       if (status === 200)
         return <AccountInfo>{
@@ -54,51 +77,17 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
   }
 
   async fetchAddressUTxOs(address: string, asset?: string): Promise<UTxO[]> {
-    const resolveScriptRef = (kScriptRef): string | undefined => {
-      if (kScriptRef) {
-        const script = kScriptRef.type.startsWith('plutus')
-          ? <PlutusScript>{
-              code: kScriptRef.bytes,
-              version: kScriptRef.type.replace('plutus', ''),
-            }
-          : fromNativeScript(deserializeNativeScript(kScriptRef.bytes));
-
-        return toScriptRef(script).to_hex();
-      }
-
-      return undefined;
-    };
-
     try {
-      const { data, status } = await this._axiosInstance.post(
-        'address_info', { _addresses: [address] },
-      );
+      const { data, status } = await this._axiosInstance.post('address_info', {
+        _addresses: [address],
+      });
 
       if (status === 200) {
-        const utxos = <UTxO[]>data
-          .flatMap((info: { utxo_set: [] }) => info.utxo_set)
-          .map((utxo) => ({
-            input: {
-              outputIndex: utxo.tx_index,
-              txHash: utxo.tx_hash,
-            },
-            output: {
-              address: address,
-              amount: [
-                { unit: 'lovelace', quantity: utxo.value },
-                ...utxo.asset_list.map(
-                  (a) =>
-                    <Asset>{
-                      unit: `${a.policy_id}${a.asset_name}`,
-                      quantity: `${a.quantity}`,
-                    }
-                ),
-              ],
-              dataHash: utxo.datum_hash ?? undefined,
-              plutusData: utxo.inline_datum?.bytes ?? undefined,
-              scriptRef: resolveScriptRef(utxo.reference_script),
-            },
-          }));
+        const utxos = <UTxO[]>(
+          data
+            .flatMap((info: { utxo_set: [] }) => info.utxo_set)
+            .map((utxo) => this.toUTxO(utxo, address))
+        );
 
         return asset !== undefined
           ? utxos.filter(
@@ -114,11 +103,13 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
     }
   }
 
-  async fetchAssetAddresses(asset: string): Promise<{ address: string; quantity: string }[]> {
+  async fetchAssetAddresses(
+    asset: string
+  ): Promise<{ address: string; quantity: string }[]> {
     try {
       const { policyId, assetName } = parseAssetUnit(asset);
       const { data, status } = await this._axiosInstance.get(
-        `asset_address_list?_asset_policy=${policyId}&_asset_name=${assetName}`,
+        `asset_address_list?_asset_policy=${policyId}&_asset_name=${assetName}`
       );
 
       if (status === 200)
@@ -137,7 +128,7 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
     try {
       const { policyId, assetName } = parseAssetUnit(asset);
       const { data, status } = await this._axiosInstance.get(
-        `asset_info?_asset_policy=${policyId}&_asset_name=${assetName}`,
+        `asset_info?_asset_policy=${policyId}&_asset_name=${assetName}`
       );
 
       if (status === 200)
@@ -153,9 +144,9 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
 
   async fetchBlockInfo(hash: string): Promise<BlockInfo> {
     try {
-      const { data, status } = await this._axiosInstance.post(
-        'block_info', { _block_hashes: [hash] }
-      );
+      const { data, status } = await this._axiosInstance.post('block_info', {
+        _block_hashes: [hash],
+      });
 
       if (status === 200)
         return <BlockInfo>{
@@ -184,7 +175,7 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
 
   async fetchCollectionAssets(
     policyId: string,
-    cursor = 0,
+    cursor = 0
   ): Promise<{ assets: Asset[]; next: string | number | null }> {
     try {
       const { data, status } = await this._axiosInstance.get(
@@ -210,11 +201,10 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
     try {
       const assetName = fromUTF8(handle.replace('$', ''));
       const { data, status } = await this._axiosInstance.get(
-        `asset_address_list?_asset_policy=${SUPPORTED_HANDLES[1]}&_asset_name=${assetName}`,
+        `asset_address_list?_asset_policy=${SUPPORTED_HANDLES[1]}&_asset_name=${assetName}`
       );
 
-      if (status === 200)
-        return data[0].payment_address;
+      if (status === 200) return data[0].payment_address;
 
       throw parseHttpError(data);
     } catch (error) {
@@ -225,7 +215,7 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
   async fetchProtocolParameters(epoch: number): Promise<Protocol> {
     try {
       const { data, status } = await this._axiosInstance.get(
-        `epoch_params?_epoch_no=${epoch}`,
+        `epoch_params?_epoch_no=${epoch}`
       );
 
       if (status === 200)
@@ -260,9 +250,9 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
 
   async fetchTxInfo(hash: string): Promise<TransactionInfo> {
     try {
-      const { data, status } = await this._axiosInstance.post(
-        'tx_info', { _tx_hashes: [hash] },
-      );
+      const { data, status } = await this._axiosInstance.post('tx_info', {
+        _tx_hashes: [hash],
+      });
 
       if (status === 200)
         return <TransactionInfo>{
@@ -283,21 +273,48 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
     }
   }
 
+  async fetchUTxOs(hash: string): Promise<UTxO[]> {
+    try {
+      // TODO: Implement the fetcher
+      console.log('hi');
+      const { data, status } = await this._axiosInstance.post('tx_info', {
+        _tx_hashes: [hash],
+      });
+      if (status === 200) {
+        console.log(data[0]);
+        const utxos = data[0].outputs.map((utxo) =>
+          this.toUTxO(utxo, utxo.payment_addr.bech32)
+        );
+        return utxos;
+      }
+      throw parseHttpError(data);
+    } catch (error) {
+      throw parseHttpError(error);
+    }
+  }
+
   onTxConfirmed(txHash: string, callback: () => void, limit = 100): void {
     let attempts = 0;
 
     const checkTx = setInterval(() => {
-      if (attempts >= limit)
-        clearInterval(checkTx);
+      if (attempts >= limit) clearInterval(checkTx);
 
-      this.fetchTxInfo(txHash).then((txInfo) => {
-        this.fetchBlockInfo(txInfo.block).then((blockInfo) => {
-          if (blockInfo?.confirmations > 0) {
-            clearInterval(checkTx);
-            callback();
-          }
-        }).catch(() => { attempts += 1; });
-      }).catch(() => { attempts += 1; });
+      this.fetchTxInfo(txHash)
+        .then((txInfo) => {
+          this.fetchBlockInfo(txInfo.block)
+            .then((blockInfo) => {
+              if (blockInfo?.confirmations > 0) {
+                clearInterval(checkTx);
+                callback();
+              }
+            })
+            .catch(() => {
+              attempts += 1;
+            });
+        })
+        .catch(() => {
+          attempts += 1;
+        });
     }, 5_000);
   }
 
@@ -306,7 +323,9 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
       const headers = { 'Content-Type': 'application/cbor' };
 
       const { data, status } = await this._axiosInstance.post(
-        'submittx', toBytes(tx), { headers },
+        'submittx',
+        toBytes(tx),
+        { headers }
       );
 
       if (status === 202) return data;
@@ -316,4 +335,45 @@ export class KoiosProvider implements IFetcher, IListener, ISubmitter {
       throw parseHttpError(error);
     }
   }
+
+  private toUTxO(utxo, address: string): UTxO {
+    return {
+      input: {
+        outputIndex: utxo.tx_index,
+        txHash: utxo.tx_hash,
+      },
+      output: {
+        address: address,
+        amount: [
+          { unit: 'lovelace', quantity: utxo.value },
+          ...utxo.asset_list.map(
+            (a) =>
+              <Asset>{
+                unit: `${a.policy_id}${a.asset_name}`,
+                quantity: `${a.quantity}`,
+              }
+          ),
+        ],
+        dataHash: utxo.datum_hash ?? undefined,
+        plutusData: utxo.inline_datum?.bytes ?? undefined,
+        scriptRef: this.resolveScriptRef(utxo.reference_script),
+        scriptHash: utxo.reference_script?.hash ?? undefined,
+      },
+    };
+  }
+
+  private resolveScriptRef = (kScriptRef): string | undefined => {
+    if (kScriptRef) {
+      const script = kScriptRef.type.startsWith('plutus')
+        ? <PlutusScript>{
+            code: kScriptRef.bytes,
+            version: kScriptRef.type.replace('plutus', ''),
+          }
+        : fromNativeScript(deserializeNativeScript(kScriptRef.bytes));
+
+      return toScriptRef(script).to_hex();
+    }
+
+    return undefined;
+  };
 }

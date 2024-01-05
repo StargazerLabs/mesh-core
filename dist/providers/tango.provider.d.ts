@@ -19,6 +19,7 @@ export declare class TangoProvider implements IEvaluator, IFetcher, IListener, I
     fetchHandleAddress(handle: string): Promise<string>;
     fetchProtocolParameters(epoch: number): Promise<Protocol>;
     fetchTxInfo(hash: string): Promise<TransactionInfo>;
+    fetchUTxOs(hash: string): Promise<UTxO[]>;
     onTxConfirmed(txHash: string, callback: () => void, limit?: number): void;
     submitTx(tx: string): Promise<string>;
 }

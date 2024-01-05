@@ -5,6 +5,8 @@ export declare class BlockfrostProvider implements IFetcher, IListener, ISubmitt
     constructor(baseUrl: string);
     constructor(projectId: string, version?: number);
     fetchAccountInfo(address: string): Promise<AccountInfo>;
+    private resolveScriptRef;
+    private toUTxO;
     fetchAddressUTxOs(address: string, asset?: string): Promise<UTxO[]>;
     fetchAssetAddresses(asset: string): Promise<{
         address: string;
@@ -19,6 +21,7 @@ export declare class BlockfrostProvider implements IFetcher, IListener, ISubmitt
     fetchHandleAddress(handle: string): Promise<string>;
     fetchProtocolParameters(epoch?: number): Promise<Protocol>;
     fetchTxInfo(hash: string): Promise<TransactionInfo>;
+    fetchUTxOs(hash: string): Promise<UTxO[]>;
     onTxConfirmed(txHash: string, callback: () => void, limit?: number): void;
     submitTx(tx: string): Promise<string>;
     private fetchPlutusScriptCBOR;
